@@ -1,6 +1,6 @@
 // Painterly (not flat-cartoon) portrait of Mr. Lau, built from layered
 // gradients + soft shading rather than solid vector fills.
-export function drawPortrait(ctx, w, h) {
+export function drawLauPortrait(ctx, w, h) {
   ctx.clearRect(0, 0, w, h);
 
   // moody backdrop
@@ -212,10 +212,212 @@ export function drawPortrait(ctx, w, h) {
 
   ctx.restore();
 
-  // torch under-glow vignette to sell "lit from a handheld torch"
+  // torch under-glow vignette to sell "lit from below in the dark"
   const glow = ctx.createRadialGradient(w * 0.5, h * 0.85, 4, w * 0.5, h * 0.85, w * 0.7);
   glow.addColorStop(0, 'rgba(255,210,140,0.10)');
   glow.addColorStop(1, 'rgba(255,210,140,0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, w, h);
+}
+
+// Painterly portrait of the player: a school student caught after hours,
+// lit from below by their own flashlight (cool white, not Mr. Lau's warm torch).
+export function drawStudentPortrait(ctx, w, h) {
+  ctx.clearRect(0, 0, w, h);
+
+  const bg = ctx.createRadialGradient(w * 0.4, h * 0.35, 10, w * 0.5, h * 0.5, w * 0.75);
+  bg.addColorStop(0, '#1c2530');
+  bg.addColorStop(0.6, '#11161c');
+  bg.addColorStop(1, '#05070a');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, w, h);
+
+  const cx = w * 0.5, neckY = h * 0.64;
+
+  ctx.save();
+  ctx.translate(cx, neckY);
+
+  // blazer (maroon, school uniform) with soft fabric shading
+  const blazerGrad = ctx.createLinearGradient(-70, 0, 70, 88);
+  blazerGrad.addColorStop(0, '#7a2b34');
+  blazerGrad.addColorStop(0.45, '#511c24');
+  blazerGrad.addColorStop(1, '#2c0f14');
+  ctx.fillStyle = blazerGrad;
+  ctx.beginPath();
+  ctx.moveTo(-60, 88);
+  ctx.quadraticCurveTo(-56, 20, -25, 6);
+  ctx.quadraticCurveTo(0, -4, 25, 6);
+  ctx.quadraticCurveTo(56, 20, 60, 88);
+  ctx.closePath();
+  ctx.fill();
+  // lapels
+  ctx.fillStyle = 'rgba(15,5,8,0.4)';
+  ctx.beginPath();
+  ctx.moveTo(-6, -2); ctx.lineTo(-22, 34); ctx.lineTo(-8, 30); ctx.closePath(); ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(6, -2); ctx.lineTo(22, 34); ctx.lineTo(8, 30); ctx.closePath(); ctx.fill();
+
+  // backpack strap crossing the chest
+  ctx.strokeStyle = '#2a2f26';
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.moveTo(-46, -6);
+  ctx.quadraticCurveTo(-10, 40, 8, 90);
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-46, -6);
+  ctx.quadraticCurveTo(-10, 40, 8, 90);
+  ctx.stroke();
+
+  // striped school tie
+  const tieGrad = ctx.createLinearGradient(-9, -3, 9, 68);
+  tieGrad.addColorStop(0, '#d9b23f');
+  tieGrad.addColorStop(1, '#8f6f24');
+  ctx.fillStyle = tieGrad;
+  ctx.beginPath();
+  ctx.moveTo(-8, -2);
+  ctx.lineTo(8, -2);
+  ctx.lineTo(5, 22);
+  ctx.lineTo(0, 32);
+  ctx.lineTo(-5, 22);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(20,15,5,0.5)';
+  ctx.lineWidth = 3;
+  for (let y = 2; y < 26; y += 7) {
+    ctx.beginPath();
+    ctx.moveTo(-8 + y * 0.12, y - 2);
+    ctx.lineTo(8 - y * 0.12, y - 2);
+    ctx.stroke();
+  }
+
+  // collar
+  ctx.fillStyle = '#eef0ec';
+  ctx.beginPath();
+  ctx.moveTo(-14, -2); ctx.lineTo(0, 8); ctx.lineTo(-4, -12); ctx.closePath(); ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(14, -2); ctx.lineTo(0, 8); ctx.lineTo(4, -12); ctx.closePath(); ctx.fill();
+
+  // neck
+  ctx.fillStyle = '#caa07a';
+  ctx.beginPath();
+  ctx.moveTo(-11, -2);
+  ctx.lineTo(11, -2);
+  ctx.lineTo(9, -18);
+  ctx.lineTo(-9, -18);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.restore();
+
+  // ---------- head (younger, rounder proportions) ----------
+  const headY = h * 0.35;
+  ctx.save();
+  ctx.translate(cx, headY);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 42, 50, 0, 0, Math.PI * 2);
+  ctx.clip();
+
+  const faceGrad = ctx.createLinearGradient(-42, -18, 42, 18);
+  faceGrad.addColorStop(0, '#e7bd94');
+  faceGrad.addColorStop(0.45, '#d1a077');
+  faceGrad.addColorStop(1, '#9a7255');
+  ctx.fillStyle = faceGrad;
+  ctx.fillRect(-55, -65, 110, 130);
+
+  const hi = ctx.createRadialGradient(-16, 6, 2, -16, 6, 28);
+  hi.addColorStop(0, 'rgba(210,235,255,0.25)');
+  hi.addColorStop(1, 'rgba(210,235,255,0)');
+  ctx.fillStyle = hi;
+  ctx.beginPath();
+  ctx.arc(-16, 6, 28, 0, Math.PI * 2);
+  ctx.fill();
+
+  const sh = ctx.createRadialGradient(26, 4, 4, 26, 4, 36);
+  sh.addColorStop(0, 'rgba(20,20,30,0.3)');
+  sh.addColorStop(1, 'rgba(20,20,30,0)');
+  ctx.fillStyle = sh;
+  ctx.beginPath();
+  ctx.arc(26, 4, 36, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+
+  // ears
+  ctx.fillStyle = '#cf9d72';
+  ctx.beginPath();
+  ctx.ellipse(-40, 4, 5, 9, 0, 0, Math.PI * 2);
+  ctx.ellipse(40, 4, 5, 9, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // tousled short hair
+  ctx.fillStyle = '#241a10';
+  ctx.beginPath();
+  ctx.moveTo(-42, -8);
+  ctx.quadraticCurveTo(-48, -46, 0, -50);
+  ctx.quadraticCurveTo(48, -46, 42, -8);
+  ctx.quadraticCurveTo(30, -32, 14, -30);
+  ctx.quadraticCurveTo(4, -40, -10, -30);
+  ctx.quadraticCurveTo(-26, -34, -42, -8);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(70,55,35,0.45)';
+  ctx.lineWidth = 1;
+  for (let i = -34; i < 34; i += 5) {
+    ctx.beginPath();
+    ctx.moveTo(i, -44 + Math.abs(i) * 0.2);
+    ctx.lineTo(i * 0.85, -28);
+    ctx.stroke();
+  }
+
+  // worried eyebrows (raised, anxious)
+  ctx.strokeStyle = '#1f150c';
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(-27, -16);
+  ctx.quadraticCurveTo(-16, -22, -7, -14);
+  ctx.moveTo(7, -14);
+  ctx.quadraticCurveTo(16, -22, 27, -16);
+  ctx.stroke();
+
+  // wide, alert eyes (no glasses)
+  ctx.fillStyle = '#fff6ea';
+  ctx.beginPath();
+  ctx.ellipse(-17, 0, 7, 5, 0, 0, Math.PI * 2);
+  ctx.ellipse(17, 0, 7, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#2a1c10';
+  ctx.beginPath();
+  ctx.ellipse(-16, 1, 3, 3.4, 0, 0, Math.PI * 2);
+  ctx.ellipse(18, 1, 3, 3.4, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // nose
+  ctx.strokeStyle = 'rgba(80,50,30,0.3)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-1, -2);
+  ctx.quadraticCurveTo(5, 12, 1, 18);
+  ctx.stroke();
+
+  // tense, slightly open mouth
+  ctx.strokeStyle = '#7a4632';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.ellipse(0, 28, 6, 3, 0, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.restore();
+
+  // cool flashlight under-glow, distinct from Mr. Lau's warm torch light
+  const glow = ctx.createRadialGradient(w * 0.5, h * 0.85, 4, w * 0.5, h * 0.85, w * 0.7);
+  glow.addColorStop(0, 'rgba(180,215,255,0.12)');
+  glow.addColorStop(1, 'rgba(180,215,255,0)');
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, w, h);
 }

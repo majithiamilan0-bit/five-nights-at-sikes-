@@ -1,10 +1,11 @@
 import * as THREE from './vendor/three/build/three.module.js';
 import { PointerLockControls } from './vendor/three/examples/jsm/controls/PointerLockControls.js';
-import { drawPortrait } from './portrait.js';
+import { drawStudentPortrait, drawLauPortrait } from './portrait.js';
 
-// paint the intro/win portraits
-drawPortrait(document.getElementById('portraitIntro').getContext('2d'), 220, 260);
-drawPortrait(document.getElementById('portraitWin').getContext('2d'), 220, 260);
+// paint the intro/win portraits (the player) and the death-screen portrait (Mr Lau)
+drawStudentPortrait(document.getElementById('portraitIntro').getContext('2d'), 220, 260);
+drawStudentPortrait(document.getElementById('portraitWin').getContext('2d'), 220, 260);
+drawLauPortrait(document.getElementById('portraitLau').getContext('2d'), 220, 260);
 
 // ---------- Maze generation (recursive backtracker) ----------
 const MAZE_COLS = 9, MAZE_ROWS = 6;
@@ -134,7 +135,7 @@ const wallTexture = makeCanvasTexture((cx, s) => {
     cx.fillRect(x, 0, 6 + Math.random() * 10, s);
   }
   noise(cx, s, 0.12);
-}, 256);
+}, 512);
 wallTexture.repeat.set(1, 1);
 
 const floorTexture = makeCanvasTexture((cx, s) => {
@@ -150,7 +151,7 @@ const floorTexture = makeCanvasTexture((cx, s) => {
     cx.beginPath(); cx.arc(x, y, r, 0, Math.PI * 2); cx.fill();
   }
   noise(cx, s, 0.15);
-}, 256);
+}, 512);
 floorTexture.repeat.set(MAZE_COLS, MAZE_ROWS);
 
 const ceilTexture = makeCanvasTexture((cx, s) => {
@@ -188,10 +189,17 @@ const canvas = document.getElementById('game');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+
+const maxAniso = renderer.capabilities.getMaxAnisotropy();
+[wallTexture, floorTexture, ceilTexture].forEach(t => { t.anisotropy = maxAniso; });
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x030503);
-scene.fog = new THREE.FogExp2(0x03050a, 0.075);
+scene.background = new THREE.Color(0x020402);
+scene.fog = new THREE.FogExp2(0x050a08, 0.068);
 
 const camera = new THREE.PerspectiveCamera(75, 2, 0.05, 60);
 const EYE_HEIGHT = 1.6;
@@ -199,41 +207,51 @@ const EYE_HEIGHT = 1.6;
 const controls = new PointerLockControls(camera, canvas);
 scene.add(camera);
 
-// lighting: dim ambient + camera-mounted torch spot + soft fill point light
-const ambient = new THREE.AmbientLight(0x1b2417, 0.35);
+// lighting: cool moonlit/algae ambient bounce (naturalistic, never pure black)
+// + a camera-mounted flashlight that casts real shadows + a tight warm fill
+// so the flashlight beam reads as the only true light source in the tunnel
+const ambient = new THREE.AmbientLight(0x141f1a, 0.22);
 scene.add(ambient);
+const hemi = new THREE.HemisphereLight(0x22301f, 0x05070a, 0.35);
+scene.add(hemi);
 
-const torch = new THREE.SpotLight(0xffdca8, 3.2, 16, Math.PI / 5, 0.55, 1.6);
-torch.position.set(0, 0, 0);
-const torchTarget = new THREE.Object3D();
-torchTarget.position.set(0, 0, -1);
-torch.target = torchTarget;
-camera.add(torch, torchTarget);
+const flashlight = new THREE.SpotLight(0xdcefff, 4.6, 17, Math.PI / 6, 0.45, 1.7);
+flashlight.position.set(0, 0, 0);
+flashlight.castShadow = true;
+flashlight.shadow.mapSize.set(1024, 1024);
+flashlight.shadow.bias = -0.0025;
+flashlight.shadow.camera.near = 0.2;
+flashlight.shadow.camera.far = 18;
+const flashlightTarget = new THREE.Object3D();
+flashlightTarget.position.set(0, 0, -1);
+flashlight.target = flashlightTarget;
+camera.add(flashlight, flashlightTarget);
 
-const fill = new THREE.PointLight(0xffb877, 0.6, 5, 2);
+const fill = new THREE.PointLight(0xaee0ff, 0.45, 5, 2);
 camera.add(fill);
 
-// first-person torch arm (simple, reads as holding a torch without a full body rig)
+// first-person arm holding a flashlight (school blazer sleeve, not a torch)
 // kept small and tucked into the corner so it hints at the character without blocking the view
 const armGroup = new THREE.Group();
-const armMat = new THREE.MeshStandardMaterial({ color: 0x2d3f66, roughness: 0.8 });
+const armMat = new THREE.MeshStandardMaterial({ color: 0x6b1f27, roughness: 0.85 });
 const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.28, 8), armMat);
 arm.rotation.z = Math.PI / 2.6;
 arm.position.set(0.34, -0.28, -0.62);
 const handMat = new THREE.MeshStandardMaterial({ color: 0xc89468, roughness: 0.7 });
 const hand = new THREE.Mesh(new THREE.SphereGeometry(0.032, 8, 8), handMat);
 hand.position.set(0.42, -0.35, -0.75);
-const torchBody = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.019, 0.13, 8), new THREE.MeshStandardMaterial({ color: 0x3a2c1e }));
-torchBody.rotation.z = Math.PI / 2.6;
-torchBody.position.set(0.48, -0.4, -0.85);
-const torchTip = new THREE.Mesh(new THREE.SphereGeometry(0.018, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffe6b0 }));
-torchTip.position.set(0.53, -0.44, -0.92);
-armGroup.add(arm, hand, torchBody, torchTip);
+const flashlightBody = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, 0.16, 10), new THREE.MeshStandardMaterial({ color: 0x2a2d33, metalness: 0.6, roughness: 0.35 }));
+flashlightBody.rotation.z = Math.PI / 2.6;
+flashlightBody.position.set(0.49, -0.4, -0.86);
+const flashlightLens = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.012, 10), new THREE.MeshBasicMaterial({ color: 0xeaf6ff }));
+flashlightLens.rotation.z = Math.PI / 2.6;
+flashlightLens.position.set(0.565, -0.445, -0.955);
+armGroup.add(arm, hand, flashlightBody, flashlightLens);
 camera.add(armGroup);
 
 // ---------- World state ----------
 let grid, dist, stationTiles, exitTile, puzzles, solved, codeDigits;
-let rats, floorDecor;
+let mrLau;
 let lives, startTime, elapsed, gameWon;
 let mazeGroup = null;
 let stationMeshes = [], stationLights = [], exitLight = null, exitMesh = null;
@@ -243,7 +261,11 @@ function worldX(gx) { return gx * CELL; }
 function worldZ(gy) { return gy * CELL; }
 
 function isWallWorld(x, z) {
-  const gx = Math.floor(x / CELL), gy = Math.floor(z / CELL);
+  // grid cell N is rendered centered on world coord N*CELL (see buildMaze),
+  // so recovering the cell index from a world position must round to the
+  // nearest cell, not floor — flooring silently shifts collision by half a
+  // tile relative to the geometry and makes movement feel randomly blocked.
+  const gx = Math.round(x / CELL), gy = Math.round(z / CELL);
   if (gx < 0 || gy < 0 || gx >= GRID_W || gy >= GRID_H) return true;
   return grid[gy][gx];
 }
@@ -264,21 +286,25 @@ function buildMaze() {
       if (grid[y][x]) {
         const m = new THREE.Mesh(wallGeo, wallMat);
         m.position.set(worldX(x), wallHeight / 2, worldZ(y));
+        m.castShadow = true;
+        m.receiveShadow = true;
         mazeGroup.add(m);
       }
     }
   }
 
-  const floorMat = new THREE.MeshStandardMaterial({ map: floorTexture, roughness: 1 });
+  const floorMat = new THREE.MeshStandardMaterial({ map: floorTexture, roughness: 0.92, metalness: 0.08 });
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(GRID_W * CELL, GRID_H * CELL), floorMat);
   floor.rotation.x = -Math.PI / 2;
   floor.position.set(worldX((GRID_W - 1) / 2), 0, worldZ((GRID_H - 1) / 2));
+  floor.receiveShadow = true;
   mazeGroup.add(floor);
 
   const ceilMat = new THREE.MeshStandardMaterial({ map: ceilTexture, roughness: 1 });
   const ceil = new THREE.Mesh(new THREE.PlaneGeometry(GRID_W * CELL, GRID_H * CELL), ceilMat);
   ceil.rotation.x = Math.PI / 2;
   ceil.position.set(worldX((GRID_W - 1) / 2), wallHeight, worldZ((GRID_H - 1) / 2));
+  ceil.receiveShadow = true;
   mazeGroup.add(ceil);
 
   // pipe details along some corridors
@@ -359,28 +385,62 @@ function buildStationsAndExit() {
   scene.add(exitLight);
 }
 
-function buildRats() {
-  rats.forEach(r => scene.remove(r.mesh));
-  rats = [];
+// Mr Lau: a tall dark-coated figure that hunts the player through the maze,
+// glasses catching a faint glow so his eyes are visible even unlit.
+function buildMrLauMesh() {
+  const group = new THREE.Group();
+  const coatMat = new THREE.MeshStandardMaterial({ color: 0x14120f, roughness: 0.88, metalness: 0.04 });
+  const coat = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.34, 1.3, 12), coatMat);
+  coat.position.y = 0.85;
+  coat.castShadow = true;
+  group.add(coat);
+
+  const shirtMat = new THREE.MeshStandardMaterial({ color: 0x232620, roughness: 0.8 });
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.17, 0.55, 10), shirtMat);
+  torso.position.y = 1.42;
+  torso.castShadow = true;
+  group.add(torso);
+
+  const armMat = new THREE.MeshStandardMaterial({ color: 0x14120f, roughness: 0.88 });
+  const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.045, 0.75, 8), armMat);
+  armL.position.set(-0.24, 1.15, 0.02);
+  armL.rotation.z = 0.15;
+  armL.castShadow = true;
+  const armR = armL.clone();
+  armR.position.x = 0.24;
+  armR.rotation.z = -0.15;
+  group.add(armL, armR);
+
+  const skinMat = new THREE.MeshStandardMaterial({ color: 0x9c8064, roughness: 0.75 });
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 14, 14), skinMat);
+  head.position.y = 1.78;
+  head.castShadow = true;
+  group.add(head);
+
+  const glassesMat = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.3, metalness: 0.5 });
+  const glasses = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.05, 0.03), glassesMat);
+  glasses.position.set(0, 1.79, 0.13);
+  group.add(glasses);
+
+  const eyeMat = new THREE.MeshBasicMaterial({ color: 0xfff2c9 });
+  const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.018, 6, 6), eyeMat);
+  const eyeR = eyeL.clone();
+  eyeL.position.set(-0.06, 1.79, 0.145);
+  eyeR.position.set(0.06, 1.79, 0.145);
+  group.add(eyeL, eyeR);
+
+  return group;
+}
+
+function buildMrLau() {
+  if (mrLau) scene.remove(mrLau.mesh);
   const floors = [];
-  for (let y = 0; y < GRID_H; y++) for (let x = 0; x < GRID_W; x++) if (!grid[y][x] && dist[y][x] > 6) floors.push({ x, y });
-  const bodyMat = new THREE.MeshStandardMaterial({ color: 0x2a2018, roughness: 0.9 });
-  const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff2a2a });
-  for (let i = 0; i < 3 && floors.length; i++) {
-    const f = floors[Math.floor(Math.random() * floors.length)];
-    const group = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 8), bodyMat);
-    body.scale.set(1.6, 0.8, 1);
-    group.add(body);
-    const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.02, 6, 6), eyeMat);
-    const eyeR = eyeL.clone();
-    eyeL.position.set(0.12, 0.05, 0.06);
-    eyeR.position.set(0.12, 0.05, -0.06);
-    group.add(eyeL, eyeR);
-    group.position.set(worldX(f.x), 0.14, worldZ(f.y));
-    scene.add(group);
-    rats.push({ mesh: group, speed: 1.1 + Math.random() * 0.6, dir: { x: 0, z: 0 }, retarget: 0 });
-  }
+  for (let y = 0; y < GRID_H; y++) for (let x = 0; x < GRID_W; x++) if (!grid[y][x] && dist[y][x] > 14) floors.push({ x, y });
+  const spawn = floors.length ? floors[Math.floor(Math.random() * floors.length)] : { x: exitTile.x, y: exitTile.y };
+  const mesh = buildMrLauMesh();
+  mesh.position.set(worldX(spawn.x), 0, worldZ(spawn.y));
+  scene.add(mesh);
+  mrLau = { mesh, dir: { x: 0, z: 0 }, speed: 1.55, repath: 0, bob: Math.random() * Math.PI * 2 };
 }
 
 function initGame() {
@@ -391,11 +451,10 @@ function initGame() {
   puzzles = pickPuzzles(4);
   solved = [false, false, false, false];
   codeDigits = [null, null, null, null];
-  rats = [];
 
   buildMaze();
   buildStationsAndExit();
-  buildRats();
+  buildMrLau();
 
   camera.position.set(worldX(1), EYE_HEIGHT, worldZ(1));
   camera.rotation.set(0, 0, 0);
@@ -405,9 +464,13 @@ function initGame() {
   elapsed = 0;
   gameWon = false;
   invuln = 0;
+  proximityDanger = 0;
+  flickerOutUntil = 0;
   updateHUD();
 }
 let invuln = 0;
+let proximityDanger = 0;
+let flickerOutUntil = 0;
 
 // ---------- Input ----------
 const keys = {};
@@ -451,39 +514,56 @@ function updateMovement(dt) {
   }
 }
 
-function updateRats(dt) {
+function updateMrLau(dt) {
   const pos = camera.position;
-  for (const rat of rats) {
-    rat.retarget -= dt;
-    if (rat.retarget <= 0) {
-      const opts = [[1,0],[-1,0],[0,1],[0,-1],[0,0]];
-      const [dx, dz] = opts[Math.floor(Math.random() * opts.length)];
-      rat.dir = { x: dx, z: dz };
-      rat.retarget = 0.8 + Math.random() * 1.2;
+  mrLau.repath -= dt;
+  if (mrLau.repath <= 0) {
+    mrLau.repath = 0.35;
+    const px = Math.round(pos.x / CELL), pz = Math.round(pos.z / CELL);
+    const huntDist = bfsDistances(grid, px, pz);
+    const cx = Math.round(mrLau.mesh.position.x / CELL), cz = Math.round(mrLau.mesh.position.z / CELL);
+    let best = null, bestD = (huntDist[cz] && huntDist[cz][cx] !== -1) ? huntDist[cz][cx] : Infinity;
+    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = cx + dx, nz = cz + dz;
+      if (nx < 0 || nz < 0 || nx >= GRID_W || nz >= GRID_H || grid[nz][nx]) continue;
+      const d = huntDist[nz][nx];
+      if (d !== -1 && d < bestD) { bestD = d; best = { x: dx, z: dz }; }
     }
-    const p = rat.mesh.position;
-    const nx = p.x + rat.dir.x * rat.speed * dt;
-    const nz = p.z + rat.dir.z * rat.speed * dt;
-    if (!circleHitsWall(nx, p.z, 0.15)) p.x = nx; else rat.retarget = 0;
-    if (!circleHitsWall(p.x, nz, 0.15)) p.z = nz; else rat.retarget = 0;
-    if (rat.dir.x || rat.dir.z) rat.mesh.rotation.y = Math.atan2(rat.dir.x, rat.dir.z);
-
-    if (invuln <= 0) {
-      const d = Math.hypot(p.x - pos.x, p.z - pos.z);
-      if (d < 0.55) onCaught();
-    }
+    mrLau.dir = best || { x: 0, z: 0 };
   }
+
+  const p = mrLau.mesh.position;
+  const nx = p.x + mrLau.dir.x * mrLau.speed * dt;
+  const nz = p.z + mrLau.dir.z * mrLau.speed * dt;
+  if (!circleHitsWall(nx, p.z, 0.32)) p.x = nx; else mrLau.repath = 0;
+  if (!circleHitsWall(p.x, nz, 0.32)) p.z = nz; else mrLau.repath = 0;
+  if (mrLau.dir.x || mrLau.dir.z) mrLau.mesh.rotation.y = Math.atan2(mrLau.dir.x, mrLau.dir.z);
+  mrLau.bob += dt * 5;
+  p.y = Math.sin(mrLau.bob) * 0.02;
+
+  const d = Math.hypot(p.x - pos.x, p.z - pos.z);
+  proximityDanger = Math.max(0, 1 - d / 6);
+  if (invuln <= 0 && d < 0.85) onCaught();
 }
 
 function onCaught() {
   lives -= 1;
   invuln = 1.5;
+  triggerHitFlash();
   updateHUD();
   if (lives <= 0) {
     controls.unlock();
     showOverlay('deathScreen');
   } else {
     camera.position.set(worldX(1), EYE_HEIGHT, worldZ(1));
+    // give the player breathing room instead of an instant re-catch
+    const floors = [];
+    for (let y = 0; y < GRID_H; y++) for (let x = 0; x < GRID_W; x++) if (!grid[y][x] && dist[y][x] > 10) floors.push({ x, y });
+    if (floors.length) {
+      const f = floors[Math.floor(Math.random() * floors.length)];
+      mrLau.mesh.position.set(worldX(f.x), 0, worldZ(f.y));
+      mrLau.repath = 0;
+    }
   }
 }
 
@@ -499,20 +579,48 @@ function updateProximity() {
   if (Math.hypot(ex - pos.x, ez - pos.z) < 1.5) openGate();
 }
 
-function updateTorchFlicker(t) {
-  const flicker = 3.0 + Math.sin(t * 9) * 0.25 + Math.sin(t * 23.7) * 0.15 + (Math.random() - 0.5) * 0.2;
-  torch.intensity = Math.max(flicker, 1.8);
-  fill.intensity = 0.5 + Math.sin(t * 9) * 0.08;
+function updateFlashlightFlicker(t, dt) {
+  // a failing school-supplied torch: gentle bulb wobble most of the time,
+  // with rare full black-outs so the beam genuinely flicks on and off
+  if (t > flickerOutUntil && Math.random() < dt * 0.06) {
+    flickerOutUntil = t + 0.06 + Math.random() * 0.22;
+  }
+  if (t < flickerOutUntil) {
+    flashlight.intensity = Math.random() < 0.5 ? 0 : 0.6;
+    fill.intensity = 0.05;
+    return;
+  }
+  const wobble = 4.6 + Math.sin(t * 11) * 0.3 + Math.sin(t * 29.3) * 0.18 + (Math.random() - 0.5) * 0.25;
+  flashlight.intensity = Math.max(wobble, 2.6);
+  fill.intensity = 0.4 + Math.sin(t * 11) * 0.08;
 }
 
 // ---------- HUD / overlays ----------
 function updateHUD() {
   const codeStr = codeDigits.map(d => d === null ? '_' : d).join(' ');
   document.getElementById('codeDisplay').textContent = `CODE: ${codeStr}`;
+
   const m = Math.floor(elapsed / 60).toString().padStart(2, '0');
   const s = Math.floor(elapsed % 60).toString().padStart(2, '0');
-  document.getElementById('timerDisplay').textContent = `TIME: ${m}:${s}`;
-  document.getElementById('livesDisplay').textContent = '❤️'.repeat(Math.max(lives, 0)) + '🖤'.repeat(3 - Math.max(lives, 0));
+  document.getElementById('timerDisplay').textContent = `${m}:${s}`;
+  // the time bar isn't a fail state — it's a tension gauge that creeps
+  // from calm green to alarmed red the longer you linger in the tunnels
+  const tension = Math.min(elapsed / 240, 1);
+  const timeFill = document.getElementById('timeFill');
+  timeFill.style.width = `${(tension * 100).toFixed(1)}%`;
+  timeFill.style.background = `linear-gradient(90deg, hsl(${100 - tension * 100},70%,45%), hsl(${100 - tension * 100},85%,60%))`;
+
+  document.querySelectorAll('#livesDisplay .heart').forEach((h, i) => h.classList.toggle('lost', i >= Math.max(lives, 0)));
+  document.getElementById('healthMeter').classList.toggle('critical', lives === 1);
+
+  document.getElementById('dangerVignette').style.opacity = (proximityDanger * 0.5).toFixed(2);
+}
+
+function triggerHitFlash() {
+  const flash = document.getElementById('hitFlash');
+  flash.classList.remove('flashing');
+  void flash.offsetWidth; // restart the CSS animation
+  flash.classList.add('flashing');
 }
 
 function showOverlay(id) {
@@ -641,11 +749,11 @@ function animate() {
   const t = clock.elapsedTime;
 
   if (invuln > 0) invuln -= dt;
-  updateTorchFlicker(t);
+  updateFlashlightFlicker(t, dt);
 
   if (controls.isLocked && !modalOpen && !gameWon) {
     updateMovement(dt);
-    updateRats(dt);
+    updateMrLau(dt);
     updateProximity();
     elapsed = (performance.now() - startTime) / 1000;
     updateHUD();

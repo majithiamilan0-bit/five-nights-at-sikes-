@@ -1,10 +1,12 @@
-# Escape the Sewers with Mr. Lau
+# Escape Mr. Lau
 
-A first-person 3D sewer escape game built with Three.js. Mr. Lau (a maths
-teacher) is trapped in the school's sewer tunnels with only his torch.
-Explore a randomly generated maze, solve 4 maths clues hidden at glowing
-rune stations to build a 4-digit exit code, avoid the rats, and reach the
-gate before your lives run out.
+A first-person 3D sewer escape game built with Three.js. You're a school
+student who got locked in the sewer tunnels beneath the school after hours
+— and Mr. Lau, in his dark coat and glasses, is down there hunting for you
+with nothing but your flickering flashlight to see by. Explore a randomly
+generated maze, solve 4 maths clues hidden at glowing rune stations to
+build a 4-digit exit code, stay out of Mr. Lau's reach, and reach the gate
+before your lives run out.
 
 ## Play locally
 

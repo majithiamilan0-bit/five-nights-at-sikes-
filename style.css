@@ -40,9 +40,104 @@ html, body {
 
 #stats {
   display: flex;
-  gap: 24px;
+  align-items: center;
+  gap: 26px;
   font-size: 14px;
   letter-spacing: 1px;
+}
+
+.meter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.meterLabel {
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  color: #9fae8c;
+}
+
+.meterTrack {
+  position: relative;
+  width: 110px;
+  height: 10px;
+  background: #10150e;
+  border: 1px solid #3d4a34;
+  border-radius: 5px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.6);
+}
+
+.meterFill {
+  height: 100%;
+  width: 0%;
+  border-radius: 5px 0 0 5px;
+  transition: width 0.4s linear;
+  box-shadow: 0 0 8px rgba(216,178,92,0.5);
+}
+
+.heartsTrack {
+  display: flex;
+  gap: 5px;
+}
+
+.heart {
+  width: 15px;
+  height: 15px;
+  position: relative;
+  transform: rotate(45deg);
+  background: #2a120f;
+  border: 1px solid #5c1f1f;
+  border-radius: 3px;
+  transition: border-color 0.3s ease;
+}
+
+.heartFill {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 30% 30%, #ff8a7a, #d8342c 70%);
+  border-radius: inherit;
+  box-shadow: 0 0 6px rgba(216,52,44,0.85);
+  transition: opacity 0.3s ease;
+}
+
+.heart.lost { border-color: #2e1414; }
+.heart.lost .heartFill { opacity: 0; }
+
+#healthMeter.critical .heart:not(.lost) {
+  animation: heartPulse 0.9s ease-in-out infinite;
+}
+
+@keyframes heartPulse {
+  0%, 100% { box-shadow: 0 0 0 rgba(216,52,44,0); }
+  50% { box-shadow: 0 0 12px 3px rgba(216,52,44,0.75); }
+}
+
+#dangerVignette {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 4;
+  opacity: 0;
+  background: radial-gradient(ellipse at center, rgba(120,0,0,0) 45%, rgba(140,10,10,0.85) 100%);
+  transition: opacity 0.25s ease;
+}
+
+#hitFlash {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: rgba(180,20,20,0.55);
+  opacity: 0;
+}
+#hitFlash.flashing {
+  animation: hitFlashAnim 0.5s ease-out;
+}
+@keyframes hitFlashAnim {
+  0% { opacity: 0.85; }
+  100% { opacity: 0; }
 }
 
 #gameWrap {
