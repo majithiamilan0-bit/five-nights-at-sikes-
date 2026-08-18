@@ -1,0 +1,210 @@
+:root {
+  --sewer-dark: #0a0f0a;
+  --sewer-mid: #1b241c;
+  --sewer-green: #4a5f3a;
+  --torch-warm: #ffdca8;
+  --grime: #2e3b26;
+  --accent: #d8b25c;
+  --danger: #8c2f2f;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: #000;
+  font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+  color: #e9e2c9;
+  overflow: hidden;
+}
+
+#hud {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 24px;
+  background: linear-gradient(180deg, rgba(0,0,0,0.85), rgba(0,0,0,0.4));
+  border-bottom: 1px solid #333;
+}
+
+#title {
+  font-weight: bold;
+  letter-spacing: 2px;
+  color: var(--accent);
+  text-shadow: 0 0 8px rgba(216,178,92,0.5);
+}
+
+#stats {
+  display: flex;
+  gap: 24px;
+  font-size: 14px;
+  letter-spacing: 1px;
+}
+
+#gameWrap {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: calc(100% - 52px);
+  background: #000;
+}
+
+canvas#game {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+}
+
+#crosshair {
+  pointer-events: none;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: rgba(233, 226, 201, 0.55);
+  box-shadow: 0 0 4px rgba(0,0,0,0.8);
+  z-index: 6;
+}
+
+#promptTag {
+  pointer-events: none;
+  position: absolute;
+  bottom: 8%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  padding: 8px 16px;
+  background: rgba(10, 14, 8, 0.75);
+  border: 1px solid #4a5f3a;
+  border-radius: 4px;
+  color: #e9e2c9;
+  font-size: 14px;
+  letter-spacing: 1px;
+}
+#promptTag.hidden { display: none; }
+
+#grain {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: grainShift 1s steps(4) infinite;
+}
+
+@keyframes grainShift {
+  0% { transform: translate(0,0); }
+  50% { transform: translate(-2%, 1%); }
+  100% { transform: translate(1%, -2%); }
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(2, 4, 2, 0.85);
+  backdrop-filter: blur(2px);
+}
+
+.overlay.hidden { display: none; }
+
+.panel {
+  width: min(480px, 88vw);
+  background: linear-gradient(160deg, #171e14, #0c110c);
+  border: 1px solid #3d4a34;
+  border-radius: 6px;
+  padding: 28px 26px;
+  box-shadow: 0 0 40px rgba(0,0,0,0.8), 0 0 0 1px rgba(216,178,92,0.08) inset;
+  text-align: center;
+}
+
+.panel.wide { width: min(560px, 92vw); }
+
+.portrait {
+  width: 160px;
+  height: auto;
+  border-radius: 6px;
+  margin: 0 auto 14px;
+  display: block;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.6);
+}
+
+.panel h1 {
+  color: var(--accent);
+  margin-top: 0;
+  text-shadow: 0 0 10px rgba(216,178,92,0.4);
+}
+
+.panel h2 {
+  color: var(--accent);
+  margin-top: 0;
+}
+
+.panel p { line-height: 1.5; color: #cdd6bd; }
+.panel .lead { color: #e9e2c9; font-style: italic; }
+.panel .controls { font-size: 13px; color: #9fae8c; }
+
+kbd {
+  background: #2b3324;
+  border: 1px solid #4a5f3a;
+  border-radius: 3px;
+  padding: 1px 6px;
+  margin: 0 2px;
+  font-size: 12px;
+}
+
+input[type="text"] {
+  width: 100%;
+  padding: 10px 12px;
+  margin: 12px 0;
+  background: #10150e;
+  border: 1px solid #4a5f3a;
+  border-radius: 4px;
+  color: #f0e9d0;
+  font-size: 16px;
+  text-align: center;
+  letter-spacing: 2px;
+}
+
+button {
+  background: linear-gradient(180deg, #d8b25c, #b78d3c);
+  border: none;
+  border-radius: 4px;
+  padding: 10px 20px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  color: #1a1408;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+button:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(216,178,92,0.35); }
+button:active { transform: translateY(0); }
+
+.rowBtns { display: flex; gap: 10px; justify-content: center; margin-top: 6px; }
+.rowBtns button:last-child {
+  background: transparent;
+  border: 1px solid #4a5f3a;
+  color: #cdd6bd;
+}
+
+#puzzleFeedback, #gateFeedback {
+  min-height: 20px;
+  font-size: 14px;
+  font-weight: bold;
+}
+#puzzleFeedback.bad, #gateFeedback.bad { color: #e07a7a; }
+#puzzleFeedback.good, #gateFeedback.good { color: #9fe08a; }

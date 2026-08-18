@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Escape the Sewers with Mr. Lau</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%94%A6%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="grain"></div>
+
+  <header id="hud">
+    <div id="title">🔦 ESCAPE THE SEWERS</div>
+    <div id="stats">
+      <span id="codeDisplay">CODE: _ _ _ _</span>
+      <span id="timerDisplay">TIME: 00:00</span>
+      <span id="livesDisplay">❤️❤️❤️</span>
+    </div>
+  </header>
+
+  <div id="gameWrap">
+    <canvas id="game"></canvas>
+    <div id="crosshair"></div>
+    <div id="promptTag" class="hidden"></div>
+  </div>
+
+  <div id="startScreen" class="overlay">
+    <div class="panel wide">
+      <canvas id="portraitIntro" class="portrait" width="220" height="260"></canvas>
+      <h1>Escape the Sewers</h1>
+      <p class="lead">Mr. Chun Pon Lau went down to fix a leak under the school... and the tunnels shifted behind him.</p>
+      <p>Look around and move through the dark with his torch. Find <strong>4 maths clues</strong> in the tunnels to
+      build the 4-digit code for the exit gate. Something moves down here too — its eyes catch the light before it does.</p>
+      <p class="controls">Click to lock the mouse and look around · <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> to move · walk up to a glowing rune to read it</p>
+      <button id="startBtn">Start the descent</button>
+    </div>
+  </div>
+
+  <div id="puzzleModal" class="overlay hidden">
+    <div class="panel">
+      <h2 id="puzzleTitle">Clue</h2>
+      <p id="puzzleQuestion"></p>
+      <input id="puzzleAnswer" type="text" inputmode="numeric" autocomplete="off" placeholder="your answer">
+      <div id="puzzleFeedback"></div>
+      <div class="rowBtns">
+        <button id="puzzleSubmit">Submit</button>
+        <button id="puzzleClose">Not yet</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="gateModal" class="overlay hidden">
+    <div class="panel">
+      <h2>Exit Gate</h2>
+      <p>Enter the 4-digit code you've pieced together.</p>
+      <input id="gateAnswer" type="text" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="0000">
+      <div id="gateFeedback"></div>
+      <div class="rowBtns">
+        <button id="gateSubmit">Unlock</button>
+        <button id="gateClose">Back away</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="winScreen" class="overlay hidden">
+    <div class="panel wide">
+      <canvas id="portraitWin" class="portrait" width="220" height="260"></canvas>
+      <h1>You escaped!</h1>
+      <p id="winStats"></p>
+      <p class="lead">Mr. Lau climbs out into the daylight, torch flickering off. "Good work. Next time, check your working."</p>
+      <button id="restartBtn">Play again</button>
+    </div>
+  </div>
+
+  <div id="deathScreen" class="overlay hidden">
+    <div class="panel">
+      <h1>Caught!</h1>
+      <p>Something in the dark got hold of Mr. Lau's sleeve...</p>
+      <button id="respawnBtn">Try again</button>
+    </div>
+  </div>
+
+  <script type="module" src="game.js"></script>
+</body>
+</html>
