@@ -421,3 +421,114 @@ export function drawStudentPortrait(ctx, w, h) {
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, w, h);
 }
+
+// Tight, harshly-lit close-up of Mr. Lau's face for the jump-scare moment —
+// filling the frame instead of the bust-shot composition the other
+// portraits use, with wide eyes and an open mouth for the shock beat.
+export function drawLauJumpscare(ctx, w, h) {
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, w, h);
+
+  const cx = w * 0.5, cy = h * 0.52;
+  ctx.save();
+  ctx.translate(cx, cy);
+
+  // harsh flashlight-from-below lighting: bright chin/nose, dark forehead
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(0, 0, w * 0.34, h * 0.4, 0, 0, Math.PI * 2);
+  ctx.clip();
+
+  const faceGrad = ctx.createLinearGradient(0, h * 0.3, 0, -h * 0.35);
+  faceGrad.addColorStop(0, '#f0c79a');
+  faceGrad.addColorStop(0.5, '#c89468');
+  faceGrad.addColorStop(1, '#3a2418');
+  ctx.fillStyle = faceGrad;
+  ctx.fillRect(-w * 0.4, -h * 0.45, w * 0.8, h * 0.9);
+
+  const underGlow = ctx.createRadialGradient(0, h * 0.3, 4, 0, h * 0.3, w * 0.5);
+  underGlow.addColorStop(0, 'rgba(255,235,200,0.55)');
+  underGlow.addColorStop(1, 'rgba(255,235,200,0)');
+  ctx.fillStyle = underGlow;
+  ctx.fillRect(-w * 0.4, -h * 0.45, w * 0.8, h * 0.9);
+  ctx.restore();
+
+  // hair, low and close over a furrowed brow
+  ctx.fillStyle = '#0c0a07';
+  ctx.beginPath();
+  ctx.moveTo(-w * 0.32, -h * 0.05);
+  ctx.quadraticCurveTo(-w * 0.34, -h * 0.38, 0, -h * 0.42);
+  ctx.quadraticCurveTo(w * 0.34, -h * 0.38, w * 0.32, -h * 0.05);
+  ctx.quadraticCurveTo(w * 0.2, -h * 0.22, 0, -h * 0.24);
+  ctx.quadraticCurveTo(-w * 0.2, -h * 0.22, -w * 0.32, -h * 0.05);
+  ctx.closePath();
+  ctx.fill();
+
+  // steep, angry eyebrows
+  ctx.strokeStyle = '#150f0a';
+  ctx.lineWidth = w * 0.018;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(-w * 0.2, -h * 0.1);
+  ctx.lineTo(-w * 0.06, -h * 0.05);
+  ctx.moveTo(w * 0.06, -h * 0.05);
+  ctx.lineTo(w * 0.2, -h * 0.1);
+  ctx.stroke();
+
+  // glasses, glinting hard as if catching the flashlight beam full-on
+  ctx.strokeStyle = '#0a0a0a';
+  ctx.lineWidth = w * 0.014;
+  ctx.beginPath();
+  ctx.roundRect(-w * 0.22, -h * 0.055, w * 0.16, h * 0.11, w * 0.02);
+  ctx.roundRect(w * 0.06, -h * 0.055, w * 0.16, h * 0.11, w * 0.02);
+  ctx.moveTo(-w * 0.06, 0);
+  ctx.lineTo(w * 0.06, 0);
+  ctx.stroke();
+  const lensGlint = ctx.createLinearGradient(-w * 0.22, -h * 0.055, w * 0.22, h * 0.055);
+  lensGlint.addColorStop(0, 'rgba(255,255,255,0.05)');
+  lensGlint.addColorStop(0.5, 'rgba(255,255,255,0.65)');
+  lensGlint.addColorStop(1, 'rgba(255,255,255,0.05)');
+  ctx.fillStyle = lensGlint;
+  ctx.beginPath();
+  ctx.roundRect(-w * 0.22, -h * 0.055, w * 0.16, h * 0.11, w * 0.02);
+  ctx.roundRect(w * 0.06, -h * 0.055, w * 0.16, h * 0.11, w * 0.02);
+  ctx.fill();
+
+  // wide, bloodshot-white eyes behind the lenses
+  ctx.fillStyle = '#fff2e6';
+  ctx.beginPath();
+  ctx.ellipse(-w * 0.14, 0, w * 0.055, h * 0.045, 0, 0, Math.PI * 2);
+  ctx.ellipse(w * 0.14, 0, w * 0.055, h * 0.045, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#1a0f08';
+  ctx.beginPath();
+  ctx.ellipse(-w * 0.14, 0, w * 0.022, w * 0.022, 0, 0, Math.PI * 2);
+  ctx.ellipse(w * 0.14, 0, w * 0.022, w * 0.022, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // nose
+  ctx.strokeStyle = 'rgba(60,35,20,0.5)';
+  ctx.lineWidth = w * 0.012;
+  ctx.beginPath();
+  ctx.moveTo(0, -h * 0.02);
+  ctx.quadraticCurveTo(w * 0.03, h * 0.08, 0, h * 0.11);
+  ctx.stroke();
+
+  // mouth wide open mid-shout
+  ctx.fillStyle = '#3a0d0d';
+  ctx.beginPath();
+  ctx.ellipse(0, h * 0.22, w * 0.09, h * 0.075, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#f0ece0';
+  ctx.fillRect(-w * 0.075, h * 0.16, w * 0.15, h * 0.025);
+
+  ctx.restore();
+
+  // hard red-tinted vignette to sell the shock of the moment
+  const vignette = ctx.createRadialGradient(cx, cy, h * 0.15, cx, cy, w * 0.65);
+  vignette.addColorStop(0, 'rgba(0,0,0,0)');
+  vignette.addColorStop(1, 'rgba(60,0,0,0.75)');
+  ctx.fillStyle = vignette;
+  ctx.fillRect(0, 0, w, h);
+}

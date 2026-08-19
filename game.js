@@ -1,15 +1,17 @@
 import * as THREE from './vendor/three/build/three.module.js';
-import { PointerLockControls } from './vendor/three/examples/jsm/controls/PointerLockControls.js';
-import { drawStudentPortrait, drawLauPortrait } from './portrait.js';
+import { drawStudentPortrait, drawLauPortrait, drawLauJumpscare } from './portrait.js';
 
 // paint the intro/win portraits (the player) and the death-screen portrait (Mr Lau)
 drawStudentPortrait(document.getElementById('portraitIntro').getContext('2d'), 220, 260);
 drawStudentPortrait(document.getElementById('portraitWin').getContext('2d'), 220, 260);
 drawLauPortrait(document.getElementById('portraitLau').getContext('2d'), 220, 260);
+drawLauJumpscare(document.getElementById('jumpscareFace').getContext('2d'), 480, 480);
 
 // ---------- Maze generation (recursive backtracker) ----------
 const MAZE_COLS = 9, MAZE_ROWS = 6;
-const GRID_W = MAZE_COLS * 2 + 1, GRID_H = MAZE_ROWS * 2 + 1;
+const MAZE_GRID_W = MAZE_COLS * 2 + 1; // width of the generated maze itself
+const ROOM_COLS = 7; // extra columns appended on the east side for the math room
+const GRID_W = MAZE_GRID_W + ROOM_COLS, GRID_H = MAZE_ROWS * 2 + 1;
 const CELL = 4; // world units per tile
 
 function generateMaze() {
@@ -125,6 +127,16 @@ const wallTexture = makeCanvasTexture((cx, s) => {
   cx.strokeStyle = 'rgba(5,8,4,0.6)';
   cx.lineWidth = 2;
   for (let row = 0; row <= 8; row++) { cx.beginPath(); cx.moveTo(0, row * brickH); cx.lineTo(s, row * brickH); cx.stroke(); }
+  // vertical mortar joints per brick, offset per row to match the running bond
+  for (let row = 0; row < 8; row++) {
+    const offset = (row % 2) * (brickW / 2);
+    for (let col = -1; col < 5; col++) {
+      cx.beginPath();
+      cx.moveTo(col * brickW + offset, row * brickH);
+      cx.lineTo(col * brickW + offset, (row + 1) * brickH);
+      cx.stroke();
+    }
+  }
   // grime streaks running down
   for (let i = 0; i < 10; i++) {
     const x = Math.random() * s;
@@ -133,6 +145,42 @@ const wallTexture = makeCanvasTexture((cx, s) => {
     g.addColorStop(1, `rgba(10,15,8,${0.15 + Math.random() * 0.2})`);
     cx.fillStyle = g;
     cx.fillRect(x, 0, 6 + Math.random() * 10, s);
+  }
+  // patchy moss/mildew blotches
+  for (let i = 0; i < 14; i++) {
+    const x = Math.random() * s, y = Math.random() * s, r = 4 + Math.random() * 14;
+    const g = cx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, `rgba(60,80,40,${0.18 + Math.random() * 0.15})`);
+    g.addColorStop(1, 'rgba(60,80,40,0)');
+    cx.fillStyle = g;
+    cx.beginPath(); cx.arc(x, y, r, 0, Math.PI * 2); cx.fill();
+  }
+  // dark old stains, dried rust-red where a pipe once wept onto the brick
+  for (let i = 0; i < 5; i++) {
+    const x = Math.random() * s, y = Math.random() * s * 0.6;
+    const g = cx.createLinearGradient(x, y, x + (Math.random() - 0.5) * 6, y + 30 + Math.random() * 60);
+    g.addColorStop(0, 'rgba(70,20,14,0.28)');
+    g.addColorStop(1, 'rgba(70,20,14,0)');
+    cx.strokeStyle = g;
+    cx.lineWidth = 2 + Math.random() * 2;
+    cx.beginPath();
+    cx.moveTo(x, y);
+    cx.lineTo(x + (Math.random() - 0.5) * 6, y + 30 + Math.random() * 60);
+    cx.stroke();
+  }
+  // hairline cracks zig-zagging across a few bricks
+  cx.strokeStyle = 'rgba(4,4,3,0.5)';
+  cx.lineWidth = 1;
+  for (let i = 0; i < 6; i++) {
+    let x = Math.random() * s, y = Math.random() * s;
+    cx.beginPath();
+    cx.moveTo(x, y);
+    for (let seg = 0; seg < 4; seg++) {
+      x += (Math.random() - 0.5) * 18;
+      y += (Math.random() - 0.5) * 18;
+      cx.lineTo(x, y);
+    }
+    cx.stroke();
   }
   noise(cx, s, 0.12);
 }, 512);
@@ -152,7 +200,7 @@ const floorTexture = makeCanvasTexture((cx, s) => {
   }
   noise(cx, s, 0.15);
 }, 512);
-floorTexture.repeat.set(MAZE_COLS, MAZE_ROWS);
+floorTexture.repeat.set(GRID_W / 2, GRID_H / 2);
 
 const ceilTexture = makeCanvasTexture((cx, s) => {
   cx.fillStyle = '#0e130c';
@@ -162,7 +210,7 @@ const ceilTexture = makeCanvasTexture((cx, s) => {
   cx.beginPath(); cx.moveTo(s * 0.3, 0); cx.lineTo(s * 0.3, s); cx.moveTo(s * 0.7, 0); cx.lineTo(s * 0.7, s); cx.stroke();
   noise(cx, s, 0.1);
 }, 256);
-ceilTexture.repeat.set(MAZE_COLS, MAZE_ROWS);
+ceilTexture.repeat.set(GRID_W / 2, GRID_H / 2);
 
 function makeRuneTexture(symbol, solved) {
   return makeCanvasTexture((cx, s) => {
@@ -201,11 +249,30 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x020402);
 scene.fog = new THREE.FogExp2(0x050a08, 0.068);
 
-const camera = new THREE.PerspectiveCamera(75, 2, 0.05, 60);
+const BASE_FOV = 75;
+const camera = new THREE.PerspectiveCamera(BASE_FOV, 2, 0.05, 60);
 const EYE_HEIGHT = 1.6;
 
-const controls = new PointerLockControls(camera, canvas);
+// Free mouse-look: no pointer-lock capture required. The cursor stays
+// visible and free (so the page can also be run in the browser's own
+// fullscreen) and the camera just reads raw mouse movement deltas.
+const look = { yaw: 0, pitch: 0 };
+const LOOK_SPEED = 0.0022;
+const PITCH_LIMIT = Math.PI / 2 - 0.05;
+window.addEventListener('mousemove', e => {
+  if (!gameActive || modalOpen || jumpscareActive) return;
+  look.yaw -= e.movementX * LOOK_SPEED;
+  look.pitch -= e.movementY * LOOK_SPEED;
+  look.pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, look.pitch));
+  camera.quaternion.setFromEuler(new THREE.Euler(look.pitch, look.yaw, 0, 'YXZ'));
+});
 scene.add(camera);
+
+const fullscreenBtn = document.getElementById('fullscreenBtn');
+fullscreenBtn.addEventListener('click', () => {
+  if (document.fullscreenElement) document.exitFullscreen();
+  else document.documentElement.requestFullscreen().catch(() => {});
+});
 
 // lighting: cool moonlit/algae ambient bounce (naturalistic, never pure black)
 // + a camera-mounted flashlight that casts real shadows + a tight warm fill
@@ -215,19 +282,19 @@ scene.add(ambient);
 const hemi = new THREE.HemisphereLight(0x22301f, 0x05070a, 0.35);
 scene.add(hemi);
 
-const flashlight = new THREE.SpotLight(0xdcefff, 4.6, 17, Math.PI / 6, 0.45, 1.7);
+const flashlight = new THREE.SpotLight(0xe8f5ff, 8.5, 24, Math.PI / 5, 0.4, 1.4);
 flashlight.position.set(0, 0, 0);
 flashlight.castShadow = true;
 flashlight.shadow.mapSize.set(1024, 1024);
 flashlight.shadow.bias = -0.0025;
 flashlight.shadow.camera.near = 0.2;
-flashlight.shadow.camera.far = 18;
+flashlight.shadow.camera.far = 25;
 const flashlightTarget = new THREE.Object3D();
 flashlightTarget.position.set(0, 0, -1);
 flashlight.target = flashlightTarget;
 camera.add(flashlight, flashlightTarget);
 
-const fill = new THREE.PointLight(0xaee0ff, 0.45, 5, 2);
+const fill = new THREE.PointLight(0xcaeaff, 0.7, 7, 2);
 camera.add(fill);
 
 // first-person arm holding a flashlight (school blazer sleeve, not a torch)
@@ -251,8 +318,9 @@ camera.add(armGroup);
 
 // ---------- World state ----------
 let grid, dist, stationTiles, exitTile, puzzles, solved, codeDigits;
-let mrLau;
-let lives, startTime, elapsed, gameWon;
+let mrLau, mrLauDefeated;
+let doorTile, roomTiles, weaponPickups, weaponPickupMeshes, ammo, jumpscareActive;
+let lives, startTime, elapsed, gameWon, gameActive = false;
 let mazeGroup = null;
 let stationMeshes = [], stationLights = [], exitLight = null, exitMesh = null;
 const clock = new THREE.Clock();
@@ -385,48 +453,107 @@ function buildStationsAndExit() {
   scene.add(exitLight);
 }
 
-// Mr Lau: a tall dark-coated figure that hunts the player through the maze,
-// glasses catching a faint glow so his eyes are visible even unlit.
+// Mr Lau: navy shirt, tan tie, green lanyard, glasses — built to match the
+// reference photos, with a stockier build and a full body (legs + shoes)
+// since the player can now see him at full height, not just torso-up.
 function buildMrLauMesh() {
   const group = new THREE.Group();
-  const coatMat = new THREE.MeshStandardMaterial({ color: 0x14120f, roughness: 0.88, metalness: 0.04 });
-  const coat = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.34, 1.3, 12), coatMat);
-  coat.position.y = 0.85;
-  coat.castShadow = true;
-  group.add(coat);
+  const shirtColor = 0x233a63;
+  const skinColor = 0xc79a72;
 
-  const shirtMat = new THREE.MeshStandardMaterial({ color: 0x232620, roughness: 0.8 });
-  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.17, 0.55, 10), shirtMat);
-  torso.position.y = 1.42;
-  torso.castShadow = true;
-  group.add(torso);
+  const trouserMat = new THREE.MeshStandardMaterial({ color: 0x14161d, roughness: 0.85 });
+  const legGeo = new THREE.CylinderGeometry(0.095, 0.11, 0.88, 8);
+  const legL = new THREE.Mesh(legGeo, trouserMat);
+  legL.position.set(-0.12, 0.44, 0);
+  legL.castShadow = true;
+  const legR = legL.clone();
+  legR.position.x = 0.12;
+  legR.castShadow = true;
+  group.add(legL, legR);
 
-  const armMat = new THREE.MeshStandardMaterial({ color: 0x14120f, roughness: 0.88 });
-  const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.045, 0.75, 8), armMat);
-  armL.position.set(-0.24, 1.15, 0.02);
-  armL.rotation.z = 0.15;
+  const shoeMat = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.5, metalness: 0.2 });
+  const shoeGeo = new THREE.BoxGeometry(0.12, 0.08, 0.26);
+  const shoeL = new THREE.Mesh(shoeGeo, shoeMat);
+  shoeL.position.set(-0.12, 0.04, 0.04);
+  const shoeR = shoeL.clone();
+  shoeR.position.x = 0.12;
+  group.add(shoeL, shoeR);
+
+  const shirtMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.75 });
+  // a stockier, rounder build to match the reference photos
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.29, 14, 12), shirtMat);
+  belly.position.y = 1.08;
+  belly.scale.set(1, 1.05, 0.92);
+  belly.castShadow = true;
+  group.add(belly);
+
+  const chest = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, 0.42, 12), shirtMat);
+  chest.position.y = 1.44;
+  chest.castShadow = true;
+  group.add(chest);
+
+  const armGeo = new THREE.CylinderGeometry(0.052, 0.048, 0.68, 8);
+  const armL = new THREE.Mesh(armGeo, shirtMat);
+  armL.position.set(-0.31, 1.28, 0.02);
+  armL.rotation.z = 0.18;
   armL.castShadow = true;
   const armR = armL.clone();
-  armR.position.x = 0.24;
-  armR.rotation.z = -0.15;
+  armR.position.x = 0.31;
+  armR.rotation.z = -0.18;
   group.add(armL, armR);
 
-  const skinMat = new THREE.MeshStandardMaterial({ color: 0x9c8064, roughness: 0.75 });
+  const handMat = new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.7 });
+  const handGeo = new THREE.SphereGeometry(0.05, 8, 8);
+  const handL = new THREE.Mesh(handGeo, handMat);
+  handL.position.set(-0.4, 0.92, 0.02);
+  const handR = handL.clone();
+  handR.position.x = 0.4;
+  group.add(handL, handR);
+
+  // tan tie
+  const tie = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.5, 0.02), new THREE.MeshStandardMaterial({ color: 0xcaa15a, roughness: 0.6 }));
+  tie.position.set(0, 1.45, 0.27);
+  tie.rotation.x = 0.15;
+  group.add(tie);
+
+  // green lanyard + white ID badge
+  const lanyardMat = new THREE.MeshStandardMaterial({ color: 0x3f6b3a, roughness: 0.7 });
+  const lanyardL = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.3, 6), lanyardMat);
+  lanyardL.position.set(-0.08, 1.55, 0.25);
+  lanyardL.rotation.z = 0.25;
+  const lanyardR = lanyardL.clone();
+  lanyardR.position.x = 0.08;
+  lanyardR.rotation.z = -0.25;
+  group.add(lanyardL, lanyardR);
+  const badge = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.13, 0.01), new THREE.MeshStandardMaterial({ color: 0xf0ece0, roughness: 0.5 }));
+  badge.position.set(0, 1.32, 0.28);
+  group.add(badge);
+
+  const skinMat = new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.75 });
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.08, 0.1, 10), skinMat);
+  neck.position.y = 1.68;
+  group.add(neck);
+
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 14, 14), skinMat);
-  head.position.y = 1.78;
+  head.position.y = 1.82;
   head.castShadow = true;
   group.add(head);
 
+  // short dark hair (partial sphere cap over the crown)
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.155, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.62), new THREE.MeshStandardMaterial({ color: 0x0f0d09, roughness: 0.85 }));
+  hair.position.y = 1.86;
+  group.add(hair);
+
   const glassesMat = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.3, metalness: 0.5 });
   const glasses = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.05, 0.03), glassesMat);
-  glasses.position.set(0, 1.79, 0.13);
+  glasses.position.set(0, 1.83, 0.13);
   group.add(glasses);
 
   const eyeMat = new THREE.MeshBasicMaterial({ color: 0xfff2c9 });
   const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.018, 6, 6), eyeMat);
   const eyeR = eyeL.clone();
-  eyeL.position.set(-0.06, 1.79, 0.145);
-  eyeR.position.set(0.06, 1.79, 0.145);
+  eyeL.position.set(-0.06, 1.83, 0.145);
+  eyeR.position.set(0.06, 1.83, 0.145);
   group.add(eyeL, eyeR);
 
   return group;
@@ -434,13 +561,165 @@ function buildMrLauMesh() {
 
 function buildMrLau() {
   if (mrLau) scene.remove(mrLau.mesh);
+  mrLauDefeated = false;
   const floors = [];
   for (let y = 0; y < GRID_H; y++) for (let x = 0; x < GRID_W; x++) if (!grid[y][x] && dist[y][x] > 14) floors.push({ x, y });
   const spawn = floors.length ? floors[Math.floor(Math.random() * floors.length)] : { x: exitTile.x, y: exitTile.y };
   const mesh = buildMrLauMesh();
   mesh.position.set(worldX(spawn.x), 0, worldZ(spawn.y));
   scene.add(mesh);
-  mrLau = { mesh, dir: { x: 0, z: 0 }, speed: 1.55, repath: 0, bob: Math.random() * Math.PI * 2 };
+  // a slow, deliberate walking pace — the dread is that he never stops,
+  // not that he's fast; he closes in a little quicker once he's right on you
+  mrLau = { mesh, dir: { x: 0, z: 0 }, speed: 1.0, repath: 0, bob: Math.random() * Math.PI * 2 };
+}
+
+// ---------- The math room: a side room off the maze with weapons to fight back ----------
+let mathRoomGroup = null;
+
+function carveMathRoom() {
+  const doorCol = MAZE_GRID_W - 1; // previously always a border wall column
+  const floorCol = MAZE_GRID_W - 2; // guaranteed floor for every maze row
+  let bestRow = 1, bestD = -1;
+  for (let cy = 0; cy < MAZE_ROWS; cy++) {
+    const ty = cy * 2 + 1;
+    if (dist[ty][floorCol] > bestD) { bestD = dist[ty][floorCol]; bestRow = ty; }
+  }
+  doorTile = { x: doorCol, y: bestRow };
+  grid[bestRow][doorCol] = false; // door threshold
+  grid[bestRow][doorCol + 1] = false; // short vestibule
+  roomTiles = [];
+  const roomStartCol = doorCol + 2;
+  for (let ty = bestRow - 1; ty <= bestRow + 1; ty++) {
+    for (let tx = roomStartCol; tx < roomStartCol + 5; tx++) {
+      grid[ty][tx] = false;
+      roomTiles.push({ x: tx, y: ty });
+    }
+  }
+}
+
+function buildWeaponMesh(type) {
+  const group = new THREE.Group();
+  const metalMat = new THREE.MeshStandardMaterial({ color: 0x2b2b2e, roughness: 0.4, metalness: 0.75 });
+  const woodMat = new THREE.MeshStandardMaterial({ color: 0x5a3a22, roughness: 0.7 });
+  if (type === 'shotgun') {
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.7, 10), metalMat);
+    barrel.rotation.z = Math.PI / 2;
+    barrel.position.set(0.1, 0.18, 0);
+    const stock = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.09, 0.07), woodMat);
+    stock.position.set(-0.32, 0.15, 0);
+    group.add(barrel, stock);
+  } else {
+    const bow = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.04, 0.04), metalMat);
+    bow.position.set(0, 0.2, 0);
+    const stockCross = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.06, 0.45), woodMat);
+    stockCross.position.set(0, 0.18, 0.05);
+    group.add(bow, stockCross);
+  }
+  group.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  return group;
+}
+
+function buildMathRoom() {
+  if (mathRoomGroup) scene.remove(mathRoomGroup);
+  weaponPickupMeshes.forEach(m => scene.remove(m.mesh));
+  weaponPickupMeshes = [];
+  mathRoomGroup = new THREE.Group();
+
+  // door slab across the threshold
+  const doorMat = new THREE.MeshStandardMaterial({ color: 0x3a2c1e, roughness: 0.7 });
+  const door = new THREE.Mesh(new THREE.BoxGeometry(0.15, 2.6, CELL * 0.85), doorMat);
+  door.position.set(worldX(doorTile.x) - CELL * 0.3, 1.3, worldZ(doorTile.y));
+  door.castShadow = true;
+  mathRoomGroup.add(door);
+  const doorLabel = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.25), new THREE.MeshBasicMaterial({ color: 0xf0ece0 }));
+  doorLabel.position.set(worldX(doorTile.x) - CELL * 0.22, 1.9, worldZ(doorTile.y));
+  doorLabel.rotation.y = Math.PI / 2;
+  mathRoomGroup.add(doorLabel);
+
+  // chalkboard on the back wall of the room, plus a light so it reads as a distinct space
+  const backX = worldX(roomTiles[roomTiles.length - 1].x) + CELL * 0.4;
+  const midY = worldZ(doorTile.y);
+  const chalkMat = new THREE.MeshStandardMaterial({ color: 0x1c3226, roughness: 0.9 });
+  const chalkboard = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 1.4), chalkMat);
+  chalkboard.position.set(backX - 0.05, 1.7, midY);
+  chalkboard.rotation.y = -Math.PI / 2;
+  mathRoomGroup.add(chalkboard);
+
+  const roomLight = new THREE.PointLight(0xfff2c0, 1.3, 9, 2);
+  roomLight.position.set(backX - 2, 2.4, midY);
+  mathRoomGroup.add(roomLight);
+
+  scene.add(mathRoomGroup);
+
+  // weapon pickups on either side of the room
+  const spots = [
+    { x: roomTiles[0].x, y: roomTiles[0].y, type: 'shotgun' },
+    { x: roomTiles[roomTiles.length - 1].x, y: roomTiles[roomTiles.length - 2].y, type: 'crossbow' },
+  ];
+  weaponPickups = spots.map(s => {
+    const mesh = buildWeaponMesh(s.type);
+    mesh.position.set(worldX(s.x), 0.55, worldZ(s.y));
+    scene.add(mesh);
+    const glow = new THREE.PointLight(0xfff6d8, 0.6, 3, 2);
+    glow.position.copy(mesh.position);
+    scene.add(glow);
+    const rec = { type: s.type, mesh, glow, collected: false };
+    weaponPickupMeshes.push(rec);
+    return rec;
+  });
+}
+
+function updateWeaponPickups(dt, t) {
+  const pos = camera.position;
+  for (const w of weaponPickups) {
+    if (w.collected) continue;
+    w.mesh.rotation.y += dt * 1.4;
+    w.mesh.position.y = 0.55 + Math.sin(t * 2 + w.mesh.position.x) * 0.05;
+    const d = Math.hypot(w.mesh.position.x - pos.x, w.mesh.position.z - pos.z);
+    if (d < 1.1) {
+      w.collected = true;
+      ammo += 2;
+      scene.remove(w.mesh);
+      scene.remove(w.glow);
+      showPrompt(`Picked up the ${w.type === 'shotgun' ? 'shotgun' : 'crossbow'} — left-click to fire at Mr Lau`, 2600);
+      updateHUD();
+    }
+  }
+}
+
+function fireWeapon() {
+  if (jumpscareActive || modalOpen || !gameActive) return;
+  if (ammo <= 0) { showPrompt('Out of ammo.', 1200); return; }
+  ammo -= 1;
+  updateHUD();
+  // muzzle flash
+  fill.intensity = 3.5;
+  setTimeout(() => { fill.intensity = 0.65; }, 90);
+
+  if (!mrLauDefeated) {
+    const forward = new THREE.Vector3();
+    camera.getWorldDirection(forward);
+    const toLau = new THREE.Vector3(mrLau.mesh.position.x - camera.position.x, 0, mrLau.mesh.position.z - camera.position.z);
+    const dist3 = toLau.length();
+    toLau.normalize();
+    const facing = new THREE.Vector3(forward.x, 0, forward.z).normalize();
+    const aim = facing.dot(toLau);
+    if (dist3 < 9 && aim > 0.86) {
+      mrLauDefeated = true;
+      showPrompt('Mr Lau is down. Get to the exit.', 3000);
+      const mesh = mrLau.mesh;
+      const start = performance.now();
+      (function collapse() {
+        const t = (performance.now() - start) / 500;
+        if (t >= 1) { scene.remove(mesh); return; }
+        mesh.rotation.x = t * 1.4;
+        mesh.position.y = -t * 1.6;
+        requestAnimationFrame(collapse);
+      })();
+    } else {
+      showPrompt('Missed.', 900);
+    }
+  }
 }
 
 function initGame() {
@@ -451,21 +730,30 @@ function initGame() {
   puzzles = pickPuzzles(4);
   solved = [false, false, false, false];
   codeDigits = [null, null, null, null];
+  weaponPickups = [];
+  weaponPickupMeshes = [];
+  ammo = 0;
 
+  carveMathRoom();
   buildMaze();
   buildStationsAndExit();
   buildMrLau();
+  buildMathRoom();
 
   camera.position.set(worldX(1), EYE_HEIGHT, worldZ(1));
-  camera.rotation.set(0, 0, 0);
+  look.yaw = 0; look.pitch = 0;
+  camera.quaternion.setFromEuler(new THREE.Euler(0, 0, 0, 'YXZ'));
 
   lives = 3;
   startTime = performance.now();
   elapsed = 0;
   gameWon = false;
+  gameActive = false;
+  jumpscareActive = false;
   invuln = 0;
   proximityDanger = 0;
   flickerOutUntil = 0;
+  hideJumpscare();
   updateHUD();
 }
 let invuln = 0;
@@ -486,7 +774,14 @@ function updateMovement(dt) {
   if (keys['d'] || keys['arrowright']) right += 1;
   if (keys['a'] || keys['arrowleft']) right -= 1;
 
-  const speed = 3.2;
+  const sprinting = (keys['shift'] || keys['shiftleft'] || keys['shiftright']) && (fwd !== 0 || right !== 0);
+  const speed = sprinting ? 5.6 : 3.2;
+  const targetFov = sprinting ? BASE_FOV + 8 : BASE_FOV;
+  if (Math.abs(camera.fov - targetFov) > 0.05) {
+    camera.fov += (targetFov - camera.fov) * Math.min(1, dt * 6);
+    camera.updateProjectionMatrix();
+  }
+
   if (fwd !== 0 || right !== 0) {
     const len = Math.hypot(fwd, right);
     fwd /= len; right /= len;
@@ -506,8 +801,8 @@ function updateMovement(dt) {
     if (!circleHitsWall(nx, pos.z, 0.3)) pos.x = nx;
     if (!circleHitsWall(pos.x, nz, 0.3)) pos.z = nz;
 
-    bobTime += dt * 8;
-    pos.y = EYE_HEIGHT + Math.sin(bobTime) * 0.03;
+    bobTime += dt * (sprinting ? 12 : 8);
+    pos.y = EYE_HEIGHT + Math.sin(bobTime) * (sprinting ? 0.045 : 0.03);
   } else {
     bobTime = 0;
     camera.position.y += (EYE_HEIGHT - camera.position.y) * 0.2;
@@ -515,6 +810,7 @@ function updateMovement(dt) {
 }
 
 function updateMrLau(dt) {
+  if (mrLauDefeated) { proximityDanger = 0; return; }
   const pos = camera.position;
   mrLau.repath -= dt;
   if (mrLau.repath <= 0) {
@@ -533,8 +829,12 @@ function updateMrLau(dt) {
   }
 
   const p = mrLau.mesh.position;
-  const nx = p.x + mrLau.dir.x * mrLau.speed * dt;
-  const nz = p.z + mrLau.dir.z * mrLau.speed * dt;
+  // a slow, deliberate walk most of the time — but he closes the gap
+  // faster once he's right on top of you, for a last-second scare
+  const distNow = Math.hypot(p.x - pos.x, p.z - pos.z);
+  const speed = distNow < 3 ? mrLau.speed * 1.4 : mrLau.speed;
+  const nx = p.x + mrLau.dir.x * speed * dt;
+  const nz = p.z + mrLau.dir.z * speed * dt;
   if (!circleHitsWall(nx, p.z, 0.32)) p.x = nx; else mrLau.repath = 0;
   if (!circleHitsWall(p.x, nz, 0.32)) p.z = nz; else mrLau.repath = 0;
   if (mrLau.dir.x || mrLau.dir.z) mrLau.mesh.rotation.y = Math.atan2(mrLau.dir.x, mrLau.dir.z);
@@ -548,14 +848,21 @@ function updateMrLau(dt) {
 
 function onCaught() {
   lives -= 1;
-  invuln = 1.5;
-  triggerHitFlash();
+  invuln = 2.4;
+  triggerJumpscare();
   updateHUD();
-  if (lives <= 0) {
-    controls.unlock();
-    showOverlay('deathScreen');
-  } else {
+  jumpscareActive = true;
+  setTimeout(() => {
+    jumpscareActive = false;
+    hideJumpscare();
+    if (lives <= 0) {
+      gameActive = false;
+      showOverlay('deathScreen');
+      return;
+    }
     camera.position.set(worldX(1), EYE_HEIGHT, worldZ(1));
+    look.yaw = 0; look.pitch = 0;
+    camera.quaternion.setFromEuler(new THREE.Euler(0, 0, 0, 'YXZ'));
     // give the player breathing room instead of an instant re-catch
     const floors = [];
     for (let y = 0; y < GRID_H; y++) for (let x = 0; x < GRID_W; x++) if (!grid[y][x] && dist[y][x] > 10) floors.push({ x, y });
@@ -564,7 +871,7 @@ function onCaught() {
       mrLau.mesh.position.set(worldX(f.x), 0, worldZ(f.y));
       mrLau.repath = 0;
     }
-  }
+  }, 850);
 }
 
 function updateProximity() {
@@ -590,9 +897,9 @@ function updateFlashlightFlicker(t, dt) {
     fill.intensity = 0.05;
     return;
   }
-  const wobble = 4.6 + Math.sin(t * 11) * 0.3 + Math.sin(t * 29.3) * 0.18 + (Math.random() - 0.5) * 0.25;
-  flashlight.intensity = Math.max(wobble, 2.6);
-  fill.intensity = 0.4 + Math.sin(t * 11) * 0.08;
+  const wobble = 8.5 + Math.sin(t * 11) * 0.5 + Math.sin(t * 29.3) * 0.3 + (Math.random() - 0.5) * 0.4;
+  flashlight.intensity = Math.max(wobble, 5.5);
+  fill.intensity = 0.65 + Math.sin(t * 11) * 0.12;
 }
 
 // ---------- HUD / overlays ----------
@@ -614,6 +921,20 @@ function updateHUD() {
   document.getElementById('healthMeter').classList.toggle('critical', lives === 1);
 
   document.getElementById('dangerVignette').style.opacity = (proximityDanger * 0.5).toFixed(2);
+
+  const ammoDisplay = document.getElementById('ammoDisplay');
+  ammoDisplay.textContent = `AMMO: ${ammo}`;
+  ammoDisplay.classList.toggle('hidden', ammo <= 0 && !weaponPickupMeshes.some(w => w.collected));
+  document.getElementById('crosshair').classList.toggle('armed', ammo > 0);
+}
+
+let promptTimeout = null;
+function showPrompt(text, ms) {
+  const tag = document.getElementById('promptTag');
+  tag.textContent = text;
+  tag.classList.remove('hidden');
+  clearTimeout(promptTimeout);
+  promptTimeout = setTimeout(() => tag.classList.add('hidden'), ms);
 }
 
 function triggerHitFlash() {
@@ -621,6 +942,18 @@ function triggerHitFlash() {
   flash.classList.remove('flashing');
   void flash.offsetWidth; // restart the CSS animation
   flash.classList.add('flashing');
+}
+
+function triggerJumpscare() {
+  triggerHitFlash();
+  const jump = document.getElementById('jumpscare');
+  jump.classList.remove('showing');
+  void jump.offsetWidth; // restart the CSS animation
+  jump.classList.add('showing');
+}
+
+function hideJumpscare() {
+  document.getElementById('jumpscare').classList.remove('showing');
 }
 
 function showOverlay(id) {
@@ -638,7 +971,6 @@ function openPuzzle(i) {
   if (modalOpen) return;
   modalOpen = true;
   activeStation = i;
-  controls.unlock();
   document.getElementById('puzzleTitle').textContent = `Clue ${i + 1} of 4`;
   document.getElementById('puzzleQuestion').textContent = puzzles[i].q;
   document.getElementById('puzzleAnswer').value = '';
@@ -651,7 +983,6 @@ function openPuzzle(i) {
 function openGate() {
   if (modalOpen) return;
   modalOpen = true;
-  controls.unlock();
   const allSolved = solved.every(Boolean);
   const fb = document.getElementById('gateFeedback');
   fb.className = '';
@@ -688,8 +1019,10 @@ document.getElementById('gateSubmit').addEventListener('click', () => {
     gameWon = true;
     const m = Math.floor(elapsed / 60).toString().padStart(2, '0');
     const s = Math.floor(elapsed % 60).toString().padStart(2, '0');
-    document.getElementById('winStats').textContent = `Escaped in ${m}:${s} with ${lives} life/lives remaining.`;
-    controls.unlock();
+    document.getElementById('winStats').textContent = mrLauDefeated
+      ? `Escaped in ${m}:${s} with ${lives} life/lives remaining — and Mr Lau isn't getting up.`
+      : `Escaped in ${m}:${s} with ${lives} life/lives remaining.`;
+    gameActive = false;
     showOverlay('winScreen');
     modalOpen = false;
   } else {
@@ -704,32 +1037,26 @@ document.getElementById('startBtn').addEventListener('click', () => {
   initGame();
   hideOverlays();
   modalOpen = false;
-  controls.lock();
+  gameActive = true;
 });
 document.getElementById('restartBtn').addEventListener('click', () => {
   initGame();
   hideOverlays();
   modalOpen = false;
-  controls.lock();
+  gameActive = true;
 });
 document.getElementById('respawnBtn').addEventListener('click', () => {
   initGame();
   hideOverlays();
   modalOpen = false;
-  controls.lock();
+  gameActive = true;
 });
 
-canvas.addEventListener('click', () => {
-  const anyOverlayVisible = [...document.querySelectorAll('.overlay')].some(el => !el.classList.contains('hidden'));
-  if (!anyOverlayVisible) controls.lock();
+canvas.addEventListener('mousedown', e => {
+  if (e.button !== 0) return;
+  if (!gameActive || modalOpen) return;
+  fireWeapon();
 });
-
-const promptTag = document.getElementById('promptTag');
-controls.addEventListener('unlock', () => {
-  const anyOverlayVisible = [...document.querySelectorAll('.overlay')].some(el => !el.classList.contains('hidden'));
-  if (!anyOverlayVisible) promptTag.classList.remove('hidden');
-});
-controls.addEventListener('lock', () => promptTag.classList.add('hidden'));
 
 // ---------- Resize ----------
 function resize() {
@@ -740,6 +1067,7 @@ function resize() {
   camera.updateProjectionMatrix();
 }
 window.addEventListener('resize', resize);
+window.addEventListener('fullscreenchange', resize);
 resize();
 
 // ---------- Main loop ----------
@@ -751,9 +1079,10 @@ function animate() {
   if (invuln > 0) invuln -= dt;
   updateFlashlightFlicker(t, dt);
 
-  if (controls.isLocked && !modalOpen && !gameWon) {
+  if (gameActive && !modalOpen && !gameWon && !jumpscareActive) {
     updateMovement(dt);
     updateMrLau(dt);
+    updateWeaponPickups(dt, t);
     updateProximity();
     elapsed = (performance.now() - startTime) / 1000;
     updateHUD();

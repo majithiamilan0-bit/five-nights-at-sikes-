@@ -11,11 +11,15 @@
   <div id="grain"></div>
   <div id="dangerVignette"></div>
   <div id="hitFlash"></div>
+  <div id="jumpscare">
+    <canvas id="jumpscareFace" width="480" height="480"></canvas>
+  </div>
 
   <header id="hud">
     <div id="title">🔦 ESCAPE THE SEWERS</div>
     <div id="stats">
       <span id="codeDisplay">CODE: _ _ _ _</span>
+      <span id="ammoDisplay" class="hidden">AMMO: 0</span>
       <div class="meter" id="timeMeter">
         <span class="meterLabel">TIME</span>
         <div class="meterTrack"><div id="timeFill" class="meterFill"></div></div>
@@ -29,6 +33,7 @@
           <div class="heart" data-i="2"><div class="heartFill"></div></div>
         </div>
       </div>
+      <button id="fullscreenBtn" title="Toggle fullscreen">⛶</button>
     </div>
   </header>
 
@@ -45,8 +50,9 @@
       <p class="lead">You stayed behind after class to return a library book, and the door to the old sewer stair was
       standing open. Now the tunnels have shifted behind you — and something in a dark coat is down here too.</p>
       <p>Find your way through the dark with a flickering flashlight. Find <strong>4 maths clues</strong> hidden at glowing
-      rune stations to build the 4-digit code for the exit gate. Whatever it is, its glasses catch the light before it does — and it never seems to stop walking toward you.</p>
-      <p class="controls">Click to lock the mouse and look around · <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> to move · walk up to a glowing rune to read it</p>
+      rune stations to build the 4-digit code for the exit gate. Somewhere in the tunnels is a maths room with something
+      you can fight back with. Whatever it is, its glasses catch the light before it does — and it never seems to stop walking toward you.</p>
+      <p class="controls">Move the mouse to look around · <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> to move · hold <kbd>Shift</kbd> to sprint · left-click to fire once armed · walk up to a glowing rune to read it · <kbd>⛶</kbd> for fullscreen</p>
       <button id="startBtn">Start the descent</button>
     </div>
   </div>
